@@ -1,0 +1,43 @@
+COMMENT: "#" /[^\n]/*
+PRIMITIVE.2: "str" | "int" | "float" | "object" | "bool" | "any"
+TYPEDEF.2: "typedef"
+HTTP_METHOD.2: "GET"i | "HEAD"i | "POST"i | "PUT"i | "DELETE"i | "CONNECT"i | "OPTIONS"i | "TRACE"i | "PATCH"i
+REQUEST.2: "->"
+RESPONSE.2: "<-"
+SEPARATOR.2: ":"
+OPTIONAL.2: "?"
+WILDCARD.2: "*"
+ARRAY.2: "[]"
+IDENTIFIER: /[a-zA-Z][-a-zA-Z0-9_]*/
+STATUS_CODE: /[0-9]+/
+CONST_VALUE: /[^\n]+/
+
+?start          : _NL* file _NL*
+file            : block*
+block           : communication _NL*
+                | typedef _NL*
+                | constant _NL*
+constant        : IDENTIFIER "=" CONST_VALUE _NL
+communication   : IDENTIFIER _NL _BEGIN const_attributes requests _END
+const_attributes: simple_attribute*
+requests        : request*
+request         : HTTP_METHOD _NL _BEGIN const_attributes request_def response_def _END
+request_def     : REQUEST _NL body?
+response_def    : RESPONSE _NL _BEGIN response+ _END
+response        : STATUS_CODE _NL body?
+body            : _BEGIN attribute* _END
+attribute       : OPTIONAL? (IDENTIFIER | WILDCARD) ARRAY? SEPARATOR type_definition
+type_definition : type IDENTIFIER? _NL body?
+type            : PRIMITIVE | enum | global_type
+enum            : "{" IDENTIFIER ("," IDENTIFIER)* "}"
+global_type     : "$" IDENTIFIER
+typedef         : TYPEDEF PRIMITIVE IDENTIFIER _NL body
+simple_attribute: IDENTIFIER SEPARATOR CONST_VALUE _NL
+
+%declare _BEGIN _END
+
+_NL: /(\r?\n[\t ]*)+/
+
+%import common.WS_INLINE
+%ignore WS_INLINE
+%ignore COMMENT
