@@ -4,9 +4,6 @@ from typing import Union
 from lark import Lark, Tree, Token, Visitor
 from lark.indenter import Indenter
 
-# TODO: typedef maybe also reference in json schema
-# TODO: typedef also other types
-# TODO: other types: bodies
 from .intermediate_representation import *
 
 
@@ -17,40 +14,6 @@ class GrammarIndenter(Indenter):
     INDENT_type = "_BEGIN"
     DEDENT_type = "_END"
     tab_len = 4
-
-
-example = """
-
-typedef object my_type
-    val1: str
-    val2: int
-    val3: object AnotherType
-        inner: int
-
-prepare
-    uri: /api/v1/prepare
-    POST
-        description: do something   cool=)=
-        ->
-            ?hello[]: $my_type   # this is optional
-            val1: str
-            val2: {NOT_VALID, INVALID2}
-            other: {ENUM1, ENUM2}
-            obj: object B
-                attr1: int
-                attr2: str
-            arr[]: int
-        <-
-            200
-                world: str
-# comment
-another
-    GET
-        -> 
-            val: int
-        <-
-            200
-"""
 
 
 class ChildStream:
@@ -240,7 +203,3 @@ def parse(text: str) -> File:
     transformer = MyTransformer()
     res = transformer.visit(parse_tree)
     return res.transformed
-
-
-if __name__ == '__main__':
-    parse(example)
