@@ -232,6 +232,8 @@ class MyTransformer(Visitor):
 
 
 def parse(text: str) -> File:
+    if text[-1] != "\n":
+        text += "\n"
     grammar_file = Path(__file__).parent.joinpath("grammar.lark")
     parser = Lark.open(grammar_file, parser="lalr", postlex=GrammarIndenter())
     parse_tree = parser.parse(text)
