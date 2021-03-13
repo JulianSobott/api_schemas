@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from typing import List, Union
 
 __all__ = ["ObjectType", "IntType", "FloatType", "StringType", "BooleanType", "EnumType", "ReferenceType", "AnyType",
-           "TypeDefinition", "Body", "File", "Attribute", "SimpleAttribute", "Communication", "Constant", "Request",
+           "TypeDefinition", "File", "TypeAttribute", "SimpleAttribute", "Communication", "Constant", "Request",
            "Response"]
 
 
 @dataclass
 class ObjectType:
-    body: 'Body'
+    attributes: List["TypeAttribute"]
 
 
 @dataclass
@@ -49,15 +49,18 @@ class ReferenceType:
     name: str
 
 
+Type = Union[ObjectType, IntType, FloatType, StringType, BooleanType, EnumType, ReferenceType, AnyType]
+
+
 @dataclass
 class TypeDefinition:
-    type_type: type
-    data: Union[ObjectType, IntType, FloatType, StringType, BooleanType, EnumType, ReferenceType]
+    type: type
+    data: Type
     name: str = None
 
 
 @dataclass
-class Attribute:
+class TypeAttribute:
     name: str
     type_definition: TypeDefinition
     is_optional: bool = False
@@ -66,22 +69,22 @@ class Attribute:
 
 
 @dataclass
-class Body:
-    attributes: List[Attribute]
+class SimpleAttribute:
+    name: str
+    value: str
 
 
 @dataclass
 class Response:
     code: int
-    body: Body
+    attributes: List[TypeAttribute]
 
 
 @dataclass
 class Request:
     method: str
-    parameters: Body
+    parameters: List[TypeAttribute]
     responses: List[Response]
-    attributes: List["SimpleAttribute"]
 
 
 @dataclass
@@ -102,12 +105,6 @@ class File:
     communications: List[Communication]
     global_types: List[TypeDefinition]
     constants: List[Constant]
-
-
-@dataclass
-class SimpleAttribute:
-    key: str
-    value: str
 
 
 def get_simple_attribute(attributes: List[SimpleAttribute], name: str, default=None):
