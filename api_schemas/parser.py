@@ -1,41 +1,21 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, List, Tuple
 
-from lark import Lark, Tree, Token, Visitor
+from lark import Lark, Tree, Token, Visitor, Transformer
 from lark.indenter import Indenter
 
 from .intermediate_representation import *
 
 
-class GrammarIndenter(Indenter):
-    NL_type = "_NL"
-    OPEN_PAREN_types = []
-    CLOSE_PAREN_types = []
-    INDENT_type = "_BEGIN"
-    DEDENT_type = "_END"
-    tab_len = 4
-
-
-class ChildStream:
-    EOF = "EOF"
-
-    def __init__(self, node: Tree):
-        self.children = node.children
-        self.next_idx = 0
-
-    def peek(self) -> Union[Token, str]:
-        if self.next_idx >= len(self.children):
-            return self.EOF
-        return self.children[self.next_idx]
-
-    def next(self) -> Union[Token, str]:
-        if self.next_idx >= len(self.children):
-            return self.EOF
-        self.next_idx += 1
-        return self.children[self.next_idx - 1]
-
-    def skip(self, n=1):
-        self.next_idx += n
+def parse(text: str) -> File:
+    if text[-1] != "\n":
+        text += "\n"
+    grammar_file = Path(__file__).parent.joinpath("grammar.lark")
+    parser = Lark.open(grammar_file, parser="lalr", postlex=GrammarIndenter())
+    parse_tree = parser.parse(text)
+    transformer = TransformToIR()
+    res = transformer.transform(parse_tree)
+    return res
 
 
 type_mapping = {
@@ -48,158 +28,167 @@ type_mapping = {
     "any": AnyType
 }
 
+Child = Union[_ALL_CLASSES, Token]
+Children = List[Child]
 
-class MyTransformer(Visitor):
 
-    def __init__(self):
-        self.stack = []
+def build_type(type_: Union[Token, EnumType, ReferenceType], body: List[TypeAttribute]) -> Tuple[type, Type]:
+    if body:
+        body = body[0]
+    if type(type_) == EnumType:
+        return EnumType, type_
+    if type(type_) == ReferenceType:
+        return ReferenceType, type_
+    ir_type = type_mapping[type_.value]
+    if ir_type == ObjectType:
+        return ir_type, ObjectType(body)
+    elif ir_type in [StringType, BooleanType, AnyType, IntType, FloatType]:
+        return ir_type, ir_type()
+    else:
+        raise ValueError(f"Unknown type: {ir_type}")
 
-    def file(self, node: Tree):
+
+class TransformToIR(Transformer):
+
+    @staticmethod
+    def file(children: Children):
         communications = []
-        global_types = []
+        typedefs = []
         constants = []
-        for n in node.children:
-            if isinstance(n.transformed, Communication):
-                communications.append(n.transformed)
-            elif isinstance(n.transformed, TypeDefinition):
-                global_types.append(n.transformed)
-            elif isinstance(n.transformed, Constant):
-                constants.append(n.transformed)
-        node.transformed = File(communications, global_types, constants)
+        for c in children:
+            if type(c) == Communication:
+                communications.append(c)
+            elif type(c) == TypeDefinition:
+                typedefs.append(c)
+            elif type(c) == Constant:
+                constants.append(c)
+            else:
+                raise ValueError(f"Unknown type: {type(c)}")
+        return File(communications, typedefs, constants)
 
-    def block(self, node: Tree):
-        node.transformed = node.children[0].transformed
+    @staticmethod
+    def block(children: Children):
+        check_type(children[0], [Communication, TypeDefinition, Constant])
+        return children[0]
 
-    def constant(self, node: Tree):
-        node.transformed = Constant(node.children[0].value, node.children[1].value)
-
-    def communication(self, node: Tree):
-        name = node.children[0].value
-        attributes = node.children[1].transformed
-        requests = node.children[2].transformed
-        node.transformed = Communication(name, attributes, requests)
-
-    def const_attributes(self, node: Tree):
+    @staticmethod
+    def communication(children: Children):
+        name = children[0].value
         attributes = []
-        for n in node.children:
-            attributes.append(n.transformed)
-        node.transformed = attributes
+        requests = []
+        for c in children[1:]:
+            if type(c) == Constant:
+                attributes.append(c)
+            else:
+                check_type(c, Request)
+                attributes.append(c)
+        return Communication(name, attributes, requests)
 
-    def requests(self, node: Tree):
-        reqs = []
-        for r in node.children:
-            reqs.append(r.transformed)
-        node.transformed = reqs
+    @staticmethod
+    def request(children: Children):
+        method = children[0].value
+        parameters = children[1]
+        responses = children[2]
+        return Request(method, parameters, responses)
 
-    def request(self, node: Tree):
-        method = node.children[0].value
-        attributes = node.children[1].transformed
-        parameters = node.children[2].transformed
-        responses = node.children[3].transformed
-        node.transformed = Request(method, parameters, responses, attributes)
+    @staticmethod
+    def request_def(children: Children):
+        if len(children) == 2:
+            return children[1]
+        return []   # no body
 
-    def request_def(self, node: Tree):
-        body = None
-        if len(node.children) == 2:
-            body = node.children[1].transformed
-        node.transformed = body
+    @staticmethod
+    def response_def(children: Children):
+        return children[1:]
 
-    def response_def(self, node: Tree):
-        responses = []
-        for n in node.children[1:]:
-            responses.append(n.transformed)
-        node.transformed = responses
+    @staticmethod
+    def response(children: Children):
+        code = int(children[0].value)   # TODO: check + error message if fail
+        attributes = children[1] if len(children) == 2 else []
+        return Response(code, attributes)
 
-    def response(self, node: Tree):
-        status_code = int(node.children[0].value)
-        body = None
-        if len(node.children) == 2:
-            body = node.children[1].transformed
-        node.transformed = Response(status_code, body)
+    @staticmethod
+    def body(children: Children):
+        check_children(children, TypeAttribute)
+        return children
 
-    def body(self, node: Tree):
-        attributes = []
-        for n in node.children:
-            attributes.append(n.transformed)
-        node.transformed = Body(attributes)
-
-    def attribute(self, node: Tree):
-        tokens = ChildStream(node)
+    @staticmethod
+    def attribute(children: Children):
         is_optional = False
-        if tokens.peek().type == "OPTIONAL":
-            is_optional = True
-            tokens.next()
-        is_wildcard = False
-        if tokens.peek().type == "WILDCARD":
-            is_wildcard = True
-        name = tokens.next().value
         is_array = False
-        if tokens.peek().type == "ARRAY":
+        token_idx = 0
+        if isinstance(children[token_idx], Token) and children[token_idx].type == "OPTIONAL":
+            is_optional = True
+            token_idx += 1
+        check_type(children[token_idx], ["IDENTIFIER", "WILDCARD"])
+        name = children[token_idx].value
+        is_wildcard = children[token_idx].type == "WILDCARD"
+        token_idx += 1
+        if isinstance(children[token_idx], Token) and children[token_idx].type == "ARRAY":
             is_array = True
-            tokens.next()
-        tokens.skip()  # skip separator
-        type_definition = tokens.next().transformed
-        node.transformed = Attribute(name, type_definition, is_optional, is_array, is_wildcard)
+            token_idx += 1
+        token_idx += 1  # SEPARATOR
+        check_type(children[token_idx], TypeDefinition)
+        return TypeAttribute(name, children[token_idx], is_optional, is_array, is_wildcard)
 
-    def type_definition(self, node: Tree):
-        tokens = ChildStream(node)
-        type_type = tokens.next().transformed
+    @staticmethod
+    def type_definition(children: Children):
+        check_type(children[0], ["PRIMITIVE", EnumType, ReferenceType])
+        idx = 1
         name = None
-        token = tokens.peek()
-        if token != ChildStream.EOF and token.type == "IDENTIFIER":
-            name = tokens.next().value
-        data = None
-        if tokens.peek() != ChildStream.EOF:
-            body = tokens.next().transformed
-            data = self._body_to_type(body, type_type)
-        if type_type == EnumType:
-            data = node.children[0].inline_data
-        if type_type == ReferenceType:
-            data = node.children[0].inline_data
-        node.transformed = TypeDefinition(type_type, data, name)
+        if len(children) > idx and isinstance(children[idx], Token) and children[idx].type == "IDENTIFIER":
+            name = children[idx].value
+            idx += 1
+        ir_type, data = build_type(children[0], children[idx:])
+        return TypeDefinition(ir_type, data, name)
 
-    def type(self, node):
-        token = node.children[0]
-        if isinstance(token, Token):  # PRIMITIVE
-            type_type = type_mapping[token.value]
-            node.transformed = type_type
-        elif token.data == "enum":
-            node.transformed = EnumType
-            node.inline_data = token.transformed
-        elif token.data == "global_type":
-            node.transformed = ReferenceType
-            node.inline_data = token.transformed
+    @staticmethod
+    def typedef(children: Children):
+        check_type(children[1], "PRIMITIVE")
+        check_type(children[2], "IDENTIFIER")
+        check_type(children[3], list)    # List[TypeAttribute]
+        ir_type, data = build_type(children[1], children[3:])
+        return TypeDefinition(ir_type, data, children[2].value)
 
-    def enum(self, node):
-        values = []
-        for n in node.children:
-            values.append(n.value)
-        node.transformed = EnumType(values)
+    @staticmethod
+    def type(children: Children):
+        return children[0]
 
-    def global_type(self, node):
-        node.transformed = ReferenceType(node.children[0].value)
+    @staticmethod
+    def enum(children: Children):
+        values = [c.value for c in children]
+        return EnumType(values)
 
-    def typedef(self, node: Tree):
-        type_type = type_mapping[node.children[1].value]
-        name = node.children[2].value
-        data = self._body_to_type(node.children[3].transformed, type_type)
-        node.transformed = TypeDefinition(type_type, data, name)
+    @staticmethod
+    def global_type(children: Children):
+        return ReferenceType(children[0].value)
 
-    def simple_attribute(self, node: Tree):
-        key = node.children[0].value
-        value = node.children[2].value
-        node.transformed = SimpleAttribute(key, value)
-
-    def _body_to_type(self, body: Body, type_type: type):
-        return ObjectType(body)  # TODO
+    @staticmethod
+    def constant(children: Children):
+        check_type(children[0], "IDENTIFIER")
+        check_type(children[1], "CONST_VALUE")
+        return Constant(children[0].value, children[1].value)
 
 
-def parse(text: str) -> File:
-    if text[-1] != "\n":
-        text += "\n"
-    grammar_file = Path(__file__).parent.joinpath("grammar.lark")
-    parser = Lark.open(grammar_file, parser="lalr", postlex=GrammarIndenter())
-    parse_tree = parser.parse(text)
-    transformer = MyTransformer()
-    res = transformer.visit(parse_tree)
-    return res.transformed
+class GrammarIndenter(Indenter):
+    NL_type = "_NL"
+    OPEN_PAREN_types = []
+    CLOSE_PAREN_types = []
+    INDENT_type = "_BEGIN"
+    DEDENT_type = "_END"
+    tab_len = 4
+
+
+def check_type(child: Child, type_: Union[Union[str, type], List[Union[str, type]]]):
+    """Helper method for assertions"""
+    if not type(type_) == list:
+        type_ = [type_]
+    if isinstance(child, Token):
+        assert child.type in type_, f"Expected: '{type_}' got '{child.type}'"
+    else:
+        assert type(child) in type_, f"Expected: '{type_}' got '{type(child)}'"
+
+
+def check_children(children: Children, type_: Union[Union[str, type], List[Union[str, type]]]):
+    """Helper method for assertions"""
+    _ = [check_type(c, type_) for c in children]

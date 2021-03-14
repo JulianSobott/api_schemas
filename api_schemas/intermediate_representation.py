@@ -4,7 +4,7 @@ from typing import List, Union
 
 __all__ = ["ObjectType", "IntType", "FloatType", "StringType", "BooleanType", "EnumType", "ReferenceType", "AnyType",
            "TypeDefinition", "File", "TypeAttribute", "SimpleAttribute", "Communication", "Constant", "Request",
-           "Response"]
+           "Response", "_ALL_CLASSES", "Type"]
 
 
 @dataclass
@@ -105,6 +105,10 @@ class File:
     communications: List[Communication]
     global_types: List[TypeDefinition]
     constants: List[Constant]
+
+
+_ALL_CLASSES = Union[ObjectType, IntType, FloatType, StringType, BooleanType, EnumType, ReferenceType, AnyType,
+                     TypeDefinition, File, TypeAttribute, SimpleAttribute, Communication, Constant, Request, Response]
 
 
 def get_simple_attribute(attributes: List[SimpleAttribute], name: str, default=None):

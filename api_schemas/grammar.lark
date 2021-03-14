@@ -18,10 +18,8 @@ block           : communication _NL*
                 | typedef _NL*
                 | constant _NL*
 constant        : IDENTIFIER "=" CONST_VALUE _NL
-communication   : IDENTIFIER _NL _BEGIN const_attributes requests _END
-const_attributes: simple_attribute*
-requests        : request*
-request         : HTTP_METHOD _NL _BEGIN const_attributes request_def response_def _END
+communication   : IDENTIFIER _NL _BEGIN constant* request+ _END
+request         : HTTP_METHOD _NL _BEGIN request_def response_def _END
 request_def     : REQUEST _NL body?
 response_def    : RESPONSE _NL _BEGIN response+ _END
 response        : STATUS_CODE _NL body?
@@ -32,7 +30,6 @@ type            : PRIMITIVE | enum | global_type
 enum            : "{" IDENTIFIER ("," IDENTIFIER)* "}"
 global_type     : "$" IDENTIFIER
 typedef         : TYPEDEF PRIMITIVE IDENTIFIER _NL body
-simple_attribute: IDENTIFIER SEPARATOR CONST_VALUE _NL
 
 %declare _BEGIN _END
 
