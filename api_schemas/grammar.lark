@@ -1,5 +1,5 @@
 COMMENT: "#" /[^\n]/*
-PRIMITIVE.2: "str" | "int" | "float" | "object" | "bool" | "any"
+PRIMITIVE.2: "str" | "int" | "float" | "bool" | "any"
 TYPEDEF.2: "typedef"
 HTTP_METHOD.2: "GET"i | "HEAD"i | "POST"i | "PUT"i | "DELETE"i | "CONNECT"i | "OPTIONS"i | "TRACE"i | "PATCH"i
 REQUEST.2: "->"
@@ -23,13 +23,16 @@ request         : HTTP_METHOD _NL _BEGIN request_def response_def _END
 request_def     : REQUEST _NL body?
 response_def    : RESPONSE _NL _BEGIN response+ _END
 response        : STATUS_CODE _NL body?
-body            : _BEGIN attribute* _END
-attribute       : OPTIONAL? (IDENTIFIER | WILDCARD) ARRAY? SEPARATOR type_definition
-type_definition : type IDENTIFIER? _NL body?
-type            : PRIMITIVE | enum | global_type
-enum            : "{" IDENTIFIER ("," IDENTIFIER)* "}"
-global_type     : "$" IDENTIFIER
-typedef         : TYPEDEF PRIMITIVE IDENTIFIER _NL body
+body            : _BEGIN constant* attribute* _END
+attribute       : OPTIONAL? (IDENTIFIER | WILDCARD) ARRAY? SEPARATOR type
+type            : primitive | enum | global_type | object
+primitive       : PRIMITIVE _NL (_BEGIN constant* _END)?
+enum            : IDENTIFIER "{" IDENTIFIER ("," IDENTIFIER)* "}" _NL
+object          : IDENTIFIER _NL body?
+global_type     : "$" IDENTIFIER _NL
+typedef         : TYPEDEF IDENTIFIER primitive
+                | TYPEDEF enum
+                | TYPEDEF object
 
 %declare _BEGIN _END
 

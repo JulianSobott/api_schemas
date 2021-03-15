@@ -1,47 +1,40 @@
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Union
+from enum import Enum
 
-__all__ = ["ObjectType", "IntType", "FloatType", "StringType", "BooleanType", "EnumType", "ReferenceType", "AnyType",
-           "TypeDefinition", "File", "TypeAttribute", "SimpleAttribute", "Communication", "Constant", "Request",
-           "Response", "_ALL_CLASSES", "Type"]
+__all__ = ["ObjectType", "EnumType", "ReferenceType", "File", "TypeAttribute", "Communication", "Constant", "Request",
+           "Response", "Type", "Typedef", "PrimitiveType", "Primitive"]
+
+
+class Primitive(Enum):
+    Str = 0
+    Int = 1
+    Float = 2
+    Bool = 3
+    Any = 4
+
+
+@dataclass
+class PrimitiveType:
+    primitive: Primitive
+    constants: List["Constant"] = field(default_factory=list)
+
+    def constants_dicts(self):
+        return {c.name: c.value for c in self.constants}
 
 
 @dataclass
 class ObjectType:
+    name: str
+    values: List["Constant"]
     attributes: List["TypeAttribute"]
 
 
 @dataclass
-class IntType:
-    minimum: int = None
-    maximum: int = None
-
-
-@dataclass
-class FloatType:
-    minimum: float = None
-    maximum: float = None
-
-
-@dataclass
-class StringType:
-    pass
-
-
-@dataclass
-class BooleanType:
-    pass
-
-
-@dataclass
 class EnumType:
+    name: str
     values: List[str]
-
-
-@dataclass
-class AnyType:
-    pass
 
 
 @dataclass
@@ -49,29 +42,22 @@ class ReferenceType:
     name: str
 
 
-Type = Union[ObjectType, IntType, FloatType, StringType, BooleanType, EnumType, ReferenceType, AnyType]
+Type = Union[PrimitiveType, ObjectType, EnumType]
 
 
 @dataclass
-class TypeDefinition:
-    type: type
-    data: Type
-    name: str = None
+class Typedef:
+    name: str
+    type: Type
 
 
 @dataclass
 class TypeAttribute:
     name: str
-    type_definition: TypeDefinition
+    type: Type
     is_optional: bool = False
     is_array: bool = False
     is_wildcard: bool = False
-
-
-@dataclass
-class SimpleAttribute:
-    name: str
-    value: str
 
 
 @dataclass
@@ -90,7 +76,7 @@ class Request:
 @dataclass
 class Communication:
     name: str
-    attributes: List["SimpleAttribute"]
+    values: List["Constant"]
     requests: List[Request]
 
 
@@ -103,19 +89,8 @@ class Constant:
 @dataclass
 class File:
     communications: List[Communication]
-    global_types: List[TypeDefinition]
+    global_types: List[Typedef]
     constants: List[Constant]
-
-
-_ALL_CLASSES = Union[ObjectType, IntType, FloatType, StringType, BooleanType, EnumType, ReferenceType, AnyType,
-                     TypeDefinition, File, TypeAttribute, SimpleAttribute, Communication, Constant, Request, Response]
-
-
-def get_simple_attribute(attributes: List[SimpleAttribute], name: str, default=None):
-    for a in attributes:
-        if a.key == name:
-            return a.value
-    return default
 
 
 def url_params_from_uri(uri: str) -> List[str]:

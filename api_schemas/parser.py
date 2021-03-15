@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Any
 
 from lark import Lark, Tree, Token, Visitor, Transformer
 from lark.indenter import Indenter
@@ -18,34 +18,16 @@ def parse(text: str) -> File:
     return res
 
 
-type_mapping = {
-    "int": IntType,
-    "str": StringType,
-    "float": FloatType,
-    "bool": BooleanType,
-    "object": ObjectType,
-    "enum": EnumType,
-    "any": AnyType
+primitive_type_mapping = {
+    "int": Primitive.Int,
+    "str": Primitive.Str,
+    "float": Primitive.Float,
+    "bool": Primitive.Bool,
+    "any": Primitive.Any
 }
 
-Child = Union[_ALL_CLASSES, Token]
+Child = Union[Token, Any]
 Children = List[Child]
-
-
-def build_type(type_: Union[Token, EnumType, ReferenceType], body: List[TypeAttribute]) -> Tuple[type, Type]:
-    if body:
-        body = body[0]
-    if type(type_) == EnumType:
-        return EnumType, type_
-    if type(type_) == ReferenceType:
-        return ReferenceType, type_
-    ir_type = type_mapping[type_.value]
-    if ir_type == ObjectType:
-        return ir_type, ObjectType(body)
-    elif ir_type in [StringType, BooleanType, AnyType, IntType, FloatType]:
-        return ir_type, ir_type()
-    else:
-        raise ValueError(f"Unknown type: {ir_type}")
 
 
 class TransformToIR(Transformer):
@@ -58,7 +40,7 @@ class TransformToIR(Transformer):
         for c in children:
             if type(c) == Communication:
                 communications.append(c)
-            elif type(c) == TypeDefinition:
+            elif type(c) == Typedef:
                 typedefs.append(c)
             elif type(c) == Constant:
                 constants.append(c)
@@ -68,8 +50,14 @@ class TransformToIR(Transformer):
 
     @staticmethod
     def block(children: Children):
-        check_type(children[0], [Communication, TypeDefinition, Constant])
+        check_type(children[0], [Communication, Typedef, Constant])
         return children[0]
+
+    @staticmethod
+    def constant(children: Children):
+        check_type(children[0], "IDENTIFIER")
+        check_type(children[1], "CONST_VALUE")
+        return Constant(children[0].value, children[1].value)
 
     @staticmethod
     def communication(children: Children):
@@ -81,7 +69,7 @@ class TransformToIR(Transformer):
                 attributes.append(c)
             else:
                 check_type(c, Request)
-                attributes.append(c)
+                requests.append(c)
         return Communication(name, attributes, requests)
 
     @staticmethod
@@ -109,7 +97,7 @@ class TransformToIR(Transformer):
 
     @staticmethod
     def body(children: Children):
-        check_children(children, TypeAttribute)
+        check_children(children, [Constant, TypeAttribute])
         return children
 
     @staticmethod
@@ -128,46 +116,56 @@ class TransformToIR(Transformer):
             is_array = True
             token_idx += 1
         token_idx += 1  # SEPARATOR
-        check_type(children[token_idx], TypeDefinition)
+        check_type(children[token_idx], [ObjectType, EnumType, ReferenceType, PrimitiveType])
         return TypeAttribute(name, children[token_idx], is_optional, is_array, is_wildcard)
 
     @staticmethod
-    def type_definition(children: Children):
-        check_type(children[0], ["PRIMITIVE", EnumType, ReferenceType])
-        idx = 1
-        name = None
-        if len(children) > idx and isinstance(children[idx], Token) and children[idx].type == "IDENTIFIER":
-            name = children[idx].value
-            idx += 1
-        ir_type, data = build_type(children[0], children[idx:])
-        return TypeDefinition(ir_type, data, name)
-
-    @staticmethod
-    def typedef(children: Children):
-        check_type(children[1], "PRIMITIVE")
-        check_type(children[2], "IDENTIFIER")
-        check_type(children[3], list)    # List[TypeAttribute]
-        ir_type, data = build_type(children[1], children[3:])
-        return TypeDefinition(ir_type, data, children[2].value)
-
-    @staticmethod
     def type(children: Children):
+        check_type(children[0], [PrimitiveType, EnumType, ReferenceType, ObjectType])
         return children[0]
 
     @staticmethod
+    def primitive(children: Children):
+        check_type(children[0], "PRIMITIVE")
+        check_children(children[1:], Constant)
+        return PrimitiveType(primitive_type_mapping[children[0].value], children[1:])
+
+    @staticmethod
     def enum(children: Children):
-        values = [c.value for c in children]
-        return EnumType(values)
+        check_type(children[0], "IDENTIFIER")
+        check_children(children[1:], "IDENTIFIER")
+        name = children[0].value
+        values = [c.value for c in children[1:]]
+        return EnumType(name, values)
+
+    @staticmethod
+    def object(children: Children):
+        check_type(children[0], "IDENTIFIER")
+        name = children[0].value
+        values: List[Constant] = []
+        attributes: List[TypeAttribute] = []
+        for c in children[1]:
+            if isinstance(c, Constant):
+                values.append(c)
+            else:
+                check_type(c, TypeAttribute)
+                attributes.append(c)
+        return ObjectType(name, values, attributes)
 
     @staticmethod
     def global_type(children: Children):
         return ReferenceType(children[0].value)
 
     @staticmethod
-    def constant(children: Children):
-        check_type(children[0], "IDENTIFIER")
-        check_type(children[1], "CONST_VALUE")
-        return Constant(children[0].value, children[1].value)
+    def typedef(children: Children):
+        if isinstance(children[1], EnumType):
+            return Typedef(children[1].name, children[1])
+        if isinstance(children[1], ObjectType):
+            return Typedef(children[1].name, children[1])
+        # PRIMITIVE
+        check_type(children[1], "IDENTIFIER")
+        check_type(children[2], PrimitiveType)
+        return Typedef(children[1].value, children[2])
 
 
 class GrammarIndenter(Indenter):

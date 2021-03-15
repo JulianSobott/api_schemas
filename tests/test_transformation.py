@@ -1,4 +1,5 @@
 from api_schemas import *
+from example_schemas import *
 
 import unittest
 
@@ -10,7 +11,7 @@ class TestTransformation(unittest.TestCase):
         print(res)
 
     def test_typedef(self):
-        res = parse("typedef object Name\n\tattr1: str\n\tattr2: str")
+        res = parse(typedef_everything)
         print(res)
 
     def test_enum(self):
