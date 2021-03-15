@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "api_schemas"
-version = "0.1.1"
+version = "0.1.2"
 description = "Create an intermediate representation of an api schema, that can be used to generate code."
 license = "MIT"
 readme = "README.md"

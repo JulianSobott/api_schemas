@@ -8,12 +8,31 @@ Create an intermediate representation of an api schema, that can be used to gene
 
 ## Example API schema
 ```
-typedef object MyData
-    name: str
-    ?an_enum: {SUCCESS, FAILURE} Status # Optional enum 
-    an_array[]: object People
-        name: str   # comments are also possible
-        *: str  # wildcards allow any string as key
+typedef Example
+    a: str
+    b: int
+    c: float
+    d: any
+    e: D {A, B, C}
+    f: E
+        Z = v v
+        ?g[]: bool
+        i: str
+            type = Date
+            format = yyyy-mm-dd HH:MM:ss.SSS
+        j: $Week
+
+typedef Date str
+    type = Datetime
+    format = yyyy-mm-dd HH:MM:ss.SSS
+    
+typedef Week {Monday, Tuesday, Wednesday}
+
+typedef Q
+    a: $Example
+    b: $Date
+    
+typedef QQ $Q
 
 server = http://localhost:5000/api/v1
 
@@ -23,7 +42,7 @@ people
         ->
         <-
             200
-                data: $MyData
+                data: $Example
             404
                 err_msg: str
             500

@@ -15,5 +15,5 @@ class TestTransformation(unittest.TestCase):
         print(res)
 
     def test_enum(self):
-        res = parse("typedef object Name\n\tattr1: {MONDAY, TUESDAY, WEDNESDAY}")
+        res = parse("typedef Name\n\tattr1: Week {MONDAY, TUESDAY, WEDNESDAY}")
         print(res)

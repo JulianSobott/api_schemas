@@ -20,18 +20,18 @@ class TestSyntax(unittest.TestCase):
 
     def test_typedef(self):
         self.correct("""\
-typedef object Name
+typedef Name
     name: str
 """)
 
     def test_indent(self):
-        self.correct("typedef object Name\n    name: str")
-        self.correct("typedef object Name\n  name: str")
-        self.correct("typedef object Name\n\tname: str")
+        self.correct("typedef Name\n    name: str")
+        self.correct("typedef Name\n  name: str")
+        self.correct("typedef Name\n\tname: str")
 
     def test_end(self):
         self.correct("x = 10")
-        self.correct("typedef object Name\n    name: str")
+        self.correct("typedef Name\n    name: str")
         self.correct("people\n\tGET\n\t\t->\n\t\t<-\n\t\t\t200")
 
     def test_common_mistakes(self):
