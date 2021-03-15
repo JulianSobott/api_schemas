@@ -157,15 +157,26 @@ class TransformToIR(Transformer):
         return ReferenceType(children[0].value)
 
     @staticmethod
-    def typedef(children: Children):
-        if isinstance(children[1], EnumType):
-            return Typedef(children[1].name, children[1])
-        if isinstance(children[1], ObjectType):
-            return Typedef(children[1].name, children[1])
-        # PRIMITIVE
+    def typedef_primitive(children: Children):
         check_type(children[1], "IDENTIFIER")
         check_type(children[2], PrimitiveType)
         return Typedef(children[1].value, children[2])
+
+    @staticmethod
+    def alias(children: Children):
+        check_type(children[1], "IDENTIFIER")
+        check_type(children[2], ReferenceType)
+        return Typedef(children[0].value, children[1])
+
+    @staticmethod
+    def typedef_enum(children: Children):
+        check_type(children[1], EnumType)
+        return Typedef(children[1].name, children[1])
+
+    @staticmethod
+    def typedef_object(children: Children):
+        check_type(children[1], ObjectType)
+        return Typedef(children[1].name, children[1])
 
 
 class GrammarIndenter(Indenter):

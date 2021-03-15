@@ -42,7 +42,7 @@ class ReferenceType:
     name: str
 
 
-Type = Union[PrimitiveType, ObjectType, EnumType]
+Type = Union[PrimitiveType, ObjectType, EnumType, ReferenceType]
 
 
 @dataclass

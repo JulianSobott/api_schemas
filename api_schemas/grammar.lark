@@ -30,9 +30,10 @@ primitive       : PRIMITIVE _NL (_BEGIN constant* _END)?
 enum            : IDENTIFIER "{" IDENTIFIER ("," IDENTIFIER)* "}" _NL
 object          : IDENTIFIER _NL body?
 global_type     : "$" IDENTIFIER _NL
-typedef         : TYPEDEF IDENTIFIER primitive
-                | TYPEDEF enum
-                | TYPEDEF object
+typedef         : TYPEDEF IDENTIFIER primitive      -> typedef_primitive
+                | TYPEDEF IDENTIFIER global_type    -> alias
+                | TYPEDEF enum                      -> typedef_enum
+                | TYPEDEF object                    -> typedef_object
 
 %declare _BEGIN _END
 

@@ -22,4 +22,6 @@ typedef Week {Monday, Tuesday, Wednesday}
 typedef Q
     a: $Example
     b: $Date
+    
+typedef QQ $Q
 """
