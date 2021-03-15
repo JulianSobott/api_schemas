@@ -5,6 +5,7 @@ from lark import Lark, Tree, Token, Visitor, Transformer
 from lark.indenter import Indenter
 
 from .intermediate_representation import *
+from .std_types import std_types
 
 
 def parse(text: str) -> File:
@@ -37,16 +38,38 @@ class TransformToIR(Transformer):
         communications = []
         typedefs = []
         constants = []
-        for c in children:
+        while children:
+            c = children.pop()
             if type(c) == Communication:
                 communications.append(c)
             elif type(c) == Typedef:
                 typedefs.append(c)
             elif type(c) == Constant:
                 constants.append(c)
+            elif type(c) == list:
+                children.extend(c)
             else:
                 raise ValueError(f"Unknown type: {type(c)}")
         return File(communications, typedefs, constants)
+
+    @staticmethod
+    def import_stmt(children: Children):
+        check_type(children[1], "IDENTIFIER")
+        module = children[1].value
+        names = []
+        for n in children[3:]:
+            names.append(n)
+
+        if module == "std":
+            file = parse(std_types)
+        else:
+            with open(f"{module}.schema") as f:   # TODO: error handling
+                file = parse(f.read())
+        imported = []
+        for t in file.global_types:
+            if t.name in names:
+                imported.append(t)
+        return imported
 
     @staticmethod
     def block(children: Children):
@@ -154,7 +177,11 @@ class TransformToIR(Transformer):
 
     @staticmethod
     def global_type(children: Children):
-        return ReferenceType(children[0].value)
+        check_children(children, "IDENTIFIER")
+        if len(children) == 2:
+            return ReferenceType(children[1].value, children[0].value)
+        else:
+            return ReferenceType(children[0].value)
 
     @staticmethod
     def typedef_primitive(children: Children):
@@ -166,7 +193,7 @@ class TransformToIR(Transformer):
     def alias(children: Children):
         check_type(children[1], "IDENTIFIER")
         check_type(children[2], ReferenceType)
-        return Typedef(children[0].value, children[1])
+        return Typedef(children[1].value, children[2])
 
     @staticmethod
     def typedef_enum(children: Children):

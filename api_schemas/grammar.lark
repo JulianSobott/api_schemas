@@ -2,6 +2,8 @@ COMMENT: "#" /[^\n]/*
 PRIMITIVE.2: "str" | "int" | "float" | "bool" | "any"
 TYPEDEF.2: "typedef"
 HTTP_METHOD.2: "GET"i | "HEAD"i | "POST"i | "PUT"i | "DELETE"i | "CONNECT"i | "OPTIONS"i | "TRACE"i | "PATCH"i
+IMPORT.2: "import"
+FROM.2: "from"
 REQUEST.2: "->"
 RESPONSE.2: "<-"
 SEPARATOR.2: ":"
@@ -13,7 +15,8 @@ STATUS_CODE: /[0-9]+/
 CONST_VALUE: /[^\n]+/
 
 ?start          : _NL* file _NL*
-file            : block*
+file            : import_stmt* block*
+import_stmt     : FROM IDENTIFIER IMPORT IDENTIFIER ("," IDENTIFIER)* _NL+
 block           : communication _NL*
                 | typedef _NL*
                 | constant _NL*
@@ -29,7 +32,7 @@ type            : primitive | enum | global_type | object
 primitive       : PRIMITIVE _NL (_BEGIN constant* _END)?
 enum            : IDENTIFIER "{" IDENTIFIER ("," IDENTIFIER)* "}" _NL
 object          : IDENTIFIER _NL body?
-global_type     : "$" IDENTIFIER _NL
+global_type     : "$" (IDENTIFIER ".")? IDENTIFIER _NL
 typedef         : TYPEDEF IDENTIFIER primitive      -> typedef_primitive
                 | TYPEDEF IDENTIFIER global_type    -> alias
                 | TYPEDEF enum                      -> typedef_enum

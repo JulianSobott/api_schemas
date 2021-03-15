@@ -40,6 +40,7 @@ class EnumType:
 @dataclass
 class ReferenceType:
     name: str
+    module: str = "this"
 
 
 Type = Union[PrimitiveType, ObjectType, EnumType, ReferenceType]

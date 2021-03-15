@@ -17,3 +17,7 @@ class TestTransformation(unittest.TestCase):
     def test_enum(self):
         res = parse("typedef Name\n\tattr1: Week {MONDAY, TUESDAY, WEDNESDAY}")
         print(res)
+
+    def test_import(self):
+        res = parse("from std import uint32\ntypedef X $uint32")
+        print(res)

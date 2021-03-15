@@ -1,4 +1,6 @@
 typedef_everything = """\
+import std
+
 typedef Example
     a: str
     b: int
@@ -12,6 +14,7 @@ typedef Example
             type = Date
             format = yyyy-mm-dd HH:MM:ss.SSS
         j: $Week
+        k: $std.uint32
 
 typedef Date str
     type = Datetime
