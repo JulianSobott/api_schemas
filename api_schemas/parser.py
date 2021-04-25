@@ -111,10 +111,14 @@ class TransformToIR(Transformer):
         if isinstance(children[token_idx], Token) and children[token_idx].type == "OPTIONAL":
             is_optional = True
             token_idx += 1
-        check_type(children[token_idx], ["IDENTIFIER", "WILDCARD"])
-        name = children[token_idx].value
-        is_wildcard = children[token_idx].type == "WILDCARD"
-        token_idx += 1
+        check_type(children[token_idx], ["IDENTIFIER", "WILDCARD", "ARRAY"])
+        if children[token_idx].type == "ARRAY":
+            name = ""   # json is an array
+            is_wildcard = False
+        else:
+            name = children[token_idx].value
+            is_wildcard = children[token_idx].type == "WILDCARD"
+            token_idx += 1
         if isinstance(children[token_idx], Token) and children[token_idx].type == "ARRAY":
             is_array = True
             token_idx += 1

@@ -26,7 +26,7 @@ request_def     : REQUEST _NL body?
 response_def    : RESPONSE _NL _BEGIN response+ _END
 response        : STATUS_CODE _NL body?
 body            : _BEGIN constant* attribute* _END
-attribute       : OPTIONAL? (IDENTIFIER | WILDCARD) ARRAY? SEPARATOR type
+attribute       : OPTIONAL? (IDENTIFIER | WILDCARD)? ARRAY? SEPARATOR type
 type            : primitive | enum | global_type | object
 primitive       : PRIMITIVE _NL (_BEGIN constant* _END)?
 enum            : IDENTIFIER "{" IDENTIFIER ("," IDENTIFIER)* "}" _NL

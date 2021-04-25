@@ -45,4 +45,16 @@ WS
     <-
 """
 
-everything = typedef_everything + websockets_1
+communication_1 = """
+t
+    uri=/t
+    
+    GET
+        ->
+            []: bool
+        <-
+            200
+
+"""
+
+everything = typedef_everything + websockets_1 + communication_1

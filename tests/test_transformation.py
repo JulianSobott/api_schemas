@@ -22,3 +22,9 @@ class TestTransformation(unittest.TestCase):
         res = parse(websockets_1)
         res = parse(websockets_2)
 
+    def test_communication(self):
+        res = parse(communication_1)
+        print(res)
+
+    def test_all(self):
+        parse(everything)
