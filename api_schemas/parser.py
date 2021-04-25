@@ -37,6 +37,7 @@ class TransformToIR(Transformer):
         communications = []
         typedefs = []
         constants = []
+        ws_events = None
         for c in children:
             if type(c) == Communication:
                 communications.append(c)
@@ -44,13 +45,15 @@ class TransformToIR(Transformer):
                 typedefs.append(c)
             elif type(c) == Constant:
                 constants.append(c)
+            elif type(c) == WSEvents:
+                ws_events = c
             else:
                 raise ValueError(f"Unknown type: {type(c)}")
-        return File(communications, typedefs, constants)
+        return File(communications, typedefs, constants, ws_events)
 
     @staticmethod
     def block(children: Children):
-        check_type(children[0], [Communication, Typedef, Constant])
+        check_type(children[0], [Communication, Typedef, Constant, WSEvents])
         return children[0]
 
     @staticmethod
@@ -177,6 +180,25 @@ class TransformToIR(Transformer):
     def typedef_object(children: Children):
         check_type(children[1], ObjectType)
         return Typedef(children[1].name, children[1])
+
+    @staticmethod
+    def ws_events(children: Children):
+        check_children(children[2], WSEvent)
+        check_children(children[4], WSEvent)
+        client_events = children[2]
+        server_events = children[4]
+        return WSEvents(client_events, server_events)
+
+    @staticmethod
+    def ws_events_list(children: Children):
+        check_children(children, WSEvent)
+        return children
+
+    @staticmethod
+    def ws_event(children: Children):
+        check_type(children[0], "IDENTIFIER")
+        check_type(children[1], list)
+        return WSEvent(children[0].value, children[1])
 
 
 class GrammarIndenter(Indenter):

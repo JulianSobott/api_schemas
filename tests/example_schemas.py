@@ -25,3 +25,24 @@ typedef Q
     
 typedef QQ $Q
 """
+
+websockets_1 = """\
+WS
+    ->
+        join
+            game_id: str
+        join_team
+            num: str
+    <-
+        update
+            i[]: int
+
+"""
+
+websockets_2 = """\
+WS
+    ->
+    <-
+"""
+
+everything = typedef_everything + websockets_1

@@ -4,7 +4,7 @@ from typing import List, Union
 from enum import Enum
 
 __all__ = ["ObjectType", "EnumType", "ReferenceType", "File", "TypeAttribute", "Communication", "Constant", "Request",
-           "Response", "Type", "Typedef", "PrimitiveType", "Primitive"]
+           "Response", "Type", "Typedef", "PrimitiveType", "Primitive", "WSEvent", "WSEvents"]
 
 
 class Primitive(Enum):
@@ -91,6 +91,19 @@ class File:
     communications: List[Communication]
     global_types: List[Typedef]
     constants: List[Constant]
+    ws_events: 'WSEvents'
+
+
+@dataclass
+class WSEvents:
+    client: List['WSEvent']
+    server: List['WSEvent']
+
+
+@dataclass
+class WSEvent:
+    name: str
+    data: List[TypeAttribute]
 
 
 def url_params_from_uri(uri: str) -> List[str]:

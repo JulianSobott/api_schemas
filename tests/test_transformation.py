@@ -17,3 +17,8 @@ class TestTransformation(unittest.TestCase):
     def test_enum(self):
         res = parse("typedef Name\n\tattr1: Week {MONDAY, TUESDAY, WEDNESDAY}")
         print(res)
+
+    def test_ws(self):
+        res = parse(websockets_1)
+        res = parse(websockets_2)
+
