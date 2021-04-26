@@ -29,8 +29,11 @@ typedef QQ $Q
 websockets_1 = """\
 WS
     ->
-        join
-            game_id: str
+        a
+            i: str
+            b: Name
+                x: str
+                i: int
         join_team
             num: str
     <-

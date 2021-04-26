@@ -2,10 +2,13 @@ import re
 from abc import ABC
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
+from typing import Dict, List, Union
 
-from api_schemas import Primitive, PrimitiveType
+from mako.template import Template
 
+from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, ReferenceType
+
+__all__ = ["NameTypes", "CaseConverter", "BaseCompiler", "NameFormat"]
 
 class NameTypes(Enum):
     ATTRIBUTE = 0
@@ -99,5 +102,96 @@ class BaseCompiler(ABC):
     def _parse_primitive(self, p: PrimitiveType):
         return self._get_primitive_map()[p.primitive]
 
-    def run(self, schema: str, *args, **kwargs) -> str:
+    def _get_array_format(self) -> str:
         raise NotImplementedError()
+
+    def compile_dataclasses(self, schema: str, template: Template, *args, **kwargs) -> str:
+        ir = parse(schema)
+        classes = []
+        enums = []
+        objects: List[Union[ObjectType, EnumType]] = []
+        reference_types_map = {}
+        for t in ir.global_types:
+            if type(t.type) == ObjectType:
+                objects.append(t.type)
+                _type = self.format_name(t.name, NameTypes.CLASS)
+            elif type(t.type) == PrimitiveType:
+                _type = self._get_primitive_map()[t.type.primitive]
+            elif type(t.type) == EnumType:
+                objects.append(t.type)
+                _type = self.format_name(t.name, NameTypes.ENUM_NAME)
+            elif type(t.type) == ReferenceType:
+                # TODO handle reference before declaration
+                _type = reference_types_map[t.type.name]
+            else:
+                raise Exception(f"Unknown type of attribute {type(t.type)}")
+            reference_types_map[t.name] = _type
+
+        # get all not globally defined classes
+        # TODO: Should they be global then?
+        for event in ir.ws_events.client + ir.ws_events.server:
+            queue = event.data
+            while queue:
+                e = queue.pop()
+                if type(e.type) == ObjectType:
+                    queue.extend(e.type.attributes)
+                    objects.append(e.type)
+                if type(e.type) == EnumType:
+                    objects.append(e.type)
+
+        while objects:
+            t = objects.pop()
+            if type(t) == ObjectType:
+                class_name = self.format_name(t.name, NameTypes.CLASS)
+                req_attributes: List[Attribute] = []
+                opt_attributes: List[Attribute] = []
+                for a in t.attributes:
+                    name = self.format_name(a.name, NameTypes.ATTRIBUTE)
+                    if type(a.type) == PrimitiveType:
+                        _type = self._get_primitive_map()[a.type.primitive]
+                    elif type(a.type) == EnumType:
+                        _type = self.format_name(a.type.name, NameTypes.ENUM_NAME)
+                        objects.append(a.type)
+                    elif type(a.type) == ObjectType:
+                        _type = self.format_name(a.type.name, NameTypes.CLASS)
+                        objects.append(a.type)
+                    elif type(a.type) == ReferenceType:
+                        _type = reference_types_map[a.type.name]
+                    else:
+                        raise Exception(f"Unknown type of attribute {type(a)}")
+
+                    if a.is_array:
+                        _type = self._get_array_format().format(_type)
+                    java_attribute = Attribute(name, _type)
+                    if a.is_optional:
+                        opt_attributes.append(java_attribute)
+                    else:
+                        req_attributes.append(java_attribute)
+                java_class = Class(class_name, req_attributes, opt_attributes)
+                classes.append(java_class)
+            elif type(t) == EnumType:
+                name = self.format_name(t.name, NameTypes.ENUM_NAME)
+                enums.append(Enum(name, t.values))
+        imports = []
+
+        file_content = template.render(classes=classes, enums=enums, imports=imports)
+        return file_content
+
+
+@dataclass
+class Class:
+    name: str
+    req_attributes: List['Attribute']
+    opt_attributes: List['Attribute']
+
+
+@dataclass
+class Attribute:
+    name: str
+    type: str
+
+
+@dataclass
+class Enum:
+    name: str
+    values: List[str]
