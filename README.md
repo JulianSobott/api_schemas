@@ -47,5 +47,26 @@ people
                 err_msg: str
             500
                 err_msg: str
+                
+WS
+    ->
+        a
+            i: str
+            b: Name
+                x: str
+                i: int
+        join_team
+            num: str
+    <-
+        update
+            i[]: int
 
 ```
+
+## Changelog
+
+### 0.1.3
+
+- Add compilers to build dataclasses for python and dart
+- Add Websocket support
+- Allow Communications that are an array instead of an object

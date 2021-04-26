@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "api_schemas"
-version = "0.1.2"
+version = "0.1.3"
 description = "Create an intermediate representation of an api schema, that can be used to generate code."
 license = "MIT"
 readme = "README.md"
@@ -16,7 +16,6 @@ Mako = "^1.1.4"
 autopep8 = "^1.5.6"
 
 [tool.poetry.dev-dependencies]
-pytest = "^6.2.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
