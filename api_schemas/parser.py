@@ -173,7 +173,7 @@ class TransformToIR(Transformer):
     def alias(children: Children):
         check_type(children[1], "IDENTIFIER")
         check_type(children[2], ReferenceType)
-        return Typedef(children[0].value, children[1])
+        return Typedef(children[1].value, children[2])
 
     @staticmethod
     def typedef_enum(children: Children):
