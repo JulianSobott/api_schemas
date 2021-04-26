@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: test
-        run: poetry run unittest
+        run: poetry run python -m unittest
   deploy:
     needs: test
     runs-on: ubuntu-latest
@@ -40,5 +40,4 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: publish
-        run: poetry publish --build "__token__" "${{ secrets.PYPI_TOKEN }}"
-  
+        run: poetry publish -u "__token__" -p "${{ secrets.PYPI_TOKEN }}" --build -n
