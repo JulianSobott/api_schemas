@@ -100,8 +100,18 @@ class TransformToIR(Transformer):
 
     @staticmethod
     def body(children: Children):
+        check_type(children[0], [list, ReferenceType])
+        return children[0]
+
+    @staticmethod
+    def body_impl(children: Children):
         check_children(children, [Constant, TypeAttribute])
         return children
+
+    @staticmethod
+    def body_ref(children: Children):
+        check_type(children[0], ReferenceType)
+        return children[0]
 
     @staticmethod
     def attribute(children: Children):
@@ -201,7 +211,7 @@ class TransformToIR(Transformer):
     @staticmethod
     def ws_event(children: Children):
         check_type(children[0], "IDENTIFIER")
-        check_type(children[1], list)
+        check_type(children[1], [list, ReferenceType])
         return WSEvent(children[0].value, children[1])
 
 

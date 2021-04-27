@@ -19,8 +19,10 @@ class TestTransformation(unittest.TestCase):
         # print(res)
 
     def test_ws(self):
-        res = parse(websockets_1)
-        res = parse(websockets_2)
+        # res = parse(websockets_1)
+        # res = parse(websockets_2)
+        res = parse(websockets_3)
+        print(res)
 
     def test_communication(self):
         res = parse(communication_1)

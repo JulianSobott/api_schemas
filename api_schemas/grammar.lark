@@ -25,7 +25,9 @@ request         : HTTP_METHOD _NL _BEGIN request_def response_def _END
 request_def     : REQUEST _NL body?
 response_def    : RESPONSE _NL _BEGIN response+ _END
 response        : STATUS_CODE _NL body?
-body            : _BEGIN constant* attribute* _END
+body            : _BEGIN (body_impl | body_ref) _END
+body_impl       : constant* attribute*
+body_ref        : global_type
 attribute       : OPTIONAL? (IDENTIFIER | WILDCARD)? ARRAY? SEPARATOR type
 type            : primitive | enum | global_type | object
 primitive       : PRIMITIVE _NL (_BEGIN constant* _END)?

@@ -48,6 +48,18 @@ WS
     <-
 """
 
+websockets_3 = """\
+typedef X
+    i: int
+    v: str
+    
+WS
+    ->
+        join
+            $X
+    <-
+"""
+
 communication_1 = """
 t
     uri=/t
