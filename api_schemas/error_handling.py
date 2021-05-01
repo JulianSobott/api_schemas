@@ -14,12 +14,12 @@ def on_syntax_error(x: UnexpectedToken, ctx: 'Context'):
     exit(-1)
 
 
-def error(lvl: 'ErrorLevel', ctx: 'Context', msg: str):
-    _print_error(lvl, ctx, msg)
+def error(lvl: 'ErrorLevel', ctx: 'Context', msg: str, help_msg: str = None):
+    _print_error(lvl, ctx, msg, help_msg)
     exit(-2)
 
 
-def _print_error(lvl: 'ErrorLevel', ctx: 'Context', msg: str):
+def _print_error(lvl: 'ErrorLevel', ctx: 'Context', msg: str, help_msg: str):
     err_map = {
         ErrorLevel.DEBUG: "DEBUG",
         ErrorLevel.INFO: "INFO",
@@ -30,6 +30,9 @@ def _print_error(lvl: 'ErrorLevel', ctx: 'Context', msg: str):
           f"{ctx.position.line_begin: 4}| {ctx.get_line(ctx.position.line_begin)}\n" \
           f"    | " \
           + " " * (ctx.position.column_begin - 1) + "^" * ((ctx.position.column_end - ctx.position.column_begin) + 1)
+    if help_msg:
+        msg += f"\n" \
+               f"\033[92m ? {help_msg}\033[00m"
     print(msg, file=sys.stderr)
 
 

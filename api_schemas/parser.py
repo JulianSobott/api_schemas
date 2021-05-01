@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Union, List, Tuple, Any, Dict
+import difflib
 
 from lark import Lark, Tree, Token, Visitor, Transformer
 from lark.indenter import Indenter
@@ -263,7 +264,11 @@ def check_children(children: Children, type_: Union[Union[str, type], List[Union
 def resolve_types(ctx: Context):
     for ref in reference_types:
         if ref.ref.name not in global_types:
-            error(ErrorLevel.ERROR, ctx.with_pos(ref.pos), f"NameError: name '{ref.ref.name} is not defined")
+            matches = difflib.get_close_matches(ref.ref.name, global_types.keys(), 1)
+            help_msg = "A type must be defined to reference it."
+            if matches:
+                help_msg = f"Did you mean: {matches[0]}"
+            error(ErrorLevel.ERROR, ctx.with_pos(ref.pos), f"NameError: name '{ref.ref.name} is not defined", help_msg)
         ref.ref.reference = global_types[ref.ref.name]
 
 
