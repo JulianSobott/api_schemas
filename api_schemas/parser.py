@@ -4,6 +4,7 @@ from typing import Union, List, Tuple, Any, Dict
 from lark import Lark, Tree, Token, Visitor, Transformer
 from lark.indenter import Indenter
 
+from .error_handling import on_syntax_error, Context
 from .intermediate_representation import *
 
 global_types: Dict[str, Type] = {}   # store all objects for resolving
@@ -17,7 +18,8 @@ def parse(text: str) -> File:
         text += "\n"
     grammar_file = Path(__file__).parent.joinpath("grammar.lark")
     parser = Lark.open(grammar_file, parser="lalr", postlex=GrammarIndenter())
-    parse_tree = parser.parse(text)
+    ctx = Context("TODO: FILENAME", text, None)
+    parse_tree = parser.parse(text, on_error=lambda err: on_syntax_error(err, ctx))
     transformer = TransformToIR()
     res = transformer.transform(parse_tree)
     resolve_types()

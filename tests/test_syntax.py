@@ -37,6 +37,9 @@ typedef Name
     def test_common_mistakes(self):
         self.wrong("people\n\tGET\n\t\t->\n\t\t<-\n")
 
+    def test_error_handling(self):
+        self.assertRaises(SystemExit, parse, "typedef\n")
+
 
 if __name__ == '__main__':
     unittest.main()
