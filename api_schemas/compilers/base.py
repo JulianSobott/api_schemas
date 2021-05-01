@@ -6,7 +6,7 @@ from typing import Dict, List, Union
 
 from mako.template import Template
 
-from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, ReferenceType
+from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, ReferenceType, Type
 
 __all__ = ["NameTypes", "CaseConverter", "BaseCompiler", "NameFormat"]
 
@@ -105,27 +105,38 @@ class BaseCompiler(ABC):
     def _get_array_format(self) -> str:
         raise NotImplementedError()
 
+    def get_native_type(self, t: Type, is_array: bool = False, is_optional: bool = False):
+        """Returns the Type for formatted for the specific language.
+        This type can be used for attributes, parameters, ...
+
+        e.g.
+        ```java
+        List<String> names; // 'List<String>' would be returned
+        ```
+        """
+        if type(t) == ObjectType:
+            _type = self.format_name(t.name, NameTypes.CLASS)
+        elif type(t) == PrimitiveType:
+            _type = self._get_primitive_map()[t.primitive]
+        elif type(t) == EnumType:
+            _type = self.format_name(t.name, NameTypes.ENUM_NAME)
+        elif type(t) == ReferenceType:
+            _type = self.get_native_type(t.reference)
+        else:
+            raise Exception(f"Unknown type {type(t)}")
+        if is_array:
+            _type = self._get_array_format().format(_type)
+        # TODO: maybe optional
+        return _type
+
     def compile_dataclasses(self, schema: str, template: Template, *args, **kwargs) -> str:
         ir = parse(schema)
         classes = []
         enums = []
         objects: List[Union[ObjectType, EnumType]] = []
-        reference_types_map = {}
-        for t in ir.global_types:
-            if type(t.type) == ObjectType:
-                objects.append(t.type)
-                _type = self.format_name(t.name, NameTypes.CLASS)
-            elif type(t.type) == PrimitiveType:
-                _type = self._get_primitive_map()[t.type.primitive]
-            elif type(t.type) == EnumType:
-                objects.append(t.type)
-                _type = self.format_name(t.name, NameTypes.ENUM_NAME)
-            elif type(t.type) == ReferenceType:
-                # TODO handle reference before declaration
-                _type = reference_types_map[t.type.name]
-            else:
-                raise Exception(f"Unknown type of attribute {type(t.type)}")
-            reference_types_map[t.name] = _type
+        for obj in ir.global_types:
+            if type(obj.type) in [ObjectType, EnumType]:
+                objects.append(obj.type)
 
         # get all not globally defined classes
         # TODO: Should they be global then?
@@ -147,21 +158,9 @@ class BaseCompiler(ABC):
                 opt_attributes: List[Attribute] = []
                 for a in t.attributes:
                     name = self.format_name(a.name, NameTypes.ATTRIBUTE)
-                    if type(a.type) == PrimitiveType:
-                        _type = self._get_primitive_map()[a.type.primitive]
-                    elif type(a.type) == EnumType:
-                        _type = self.format_name(a.type.name, NameTypes.ENUM_NAME)
+                    if type(a.type) in [ObjectType, EnumType]:
                         objects.append(a.type)
-                    elif type(a.type) == ObjectType:
-                        _type = self.format_name(a.type.name, NameTypes.CLASS)
-                        objects.append(a.type)
-                    elif type(a.type) == ReferenceType:
-                        _type = reference_types_map[a.type.name]
-                    else:
-                        raise Exception(f"Unknown type of attribute {type(a)}")
-
-                    if a.is_array:
-                        _type = self._get_array_format().format(_type)
+                    _type = self.get_native_type(a.type, a.is_array, a.is_optional)
                     java_attribute = Attribute(name, _type)
                     if a.is_optional:
                         opt_attributes.append(java_attribute)
