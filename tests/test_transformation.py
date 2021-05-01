@@ -30,3 +30,16 @@ class TestTransformation(unittest.TestCase):
 
     def test_all(self):
         parse(everything)
+
+    def test_reference_types(self):
+        res = parse(references_schema)
+        self.assertTrue(len(res.global_types) == 2)
+        self.assertIs(type(res.global_types[0].type), ObjectType)
+        self.assertIs(type(res.global_types[1].type), ObjectType)
+        self.assertIs(type(res.global_types[0].type.attributes[0].type), ReferenceType)
+        self.assertIs(type(res.global_types[1].type.attributes[0].type), ReferenceType)
+        self.assertEqual(res.global_types[0].type.attributes[0].type.reference.name, "Y")
+        self.assertEqual(res.global_types[1].type.attributes[0].type.reference.name, "X")
+
+    def test_reference_types_not_found(self):
+        self.assertRaises(RuntimeError, lambda:parse("typedef Y\n\tx: $X\n"))

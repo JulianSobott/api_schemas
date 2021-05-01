@@ -40,6 +40,7 @@ class EnumType:
 @dataclass
 class ReferenceType:
     name: str
+    reference: 'Type' = None
 
 
 Type = Union[PrimitiveType, ObjectType, EnumType, ReferenceType]

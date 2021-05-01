@@ -1,13 +1,18 @@
 from pathlib import Path
-from typing import Union, List, Tuple, Any
+from typing import Union, List, Tuple, Any, Dict
 
 from lark import Lark, Tree, Token, Visitor, Transformer
 from lark.indenter import Indenter
 
 from .intermediate_representation import *
 
+global_types: Dict[str, Type] = {}   # store all objects for resolving
+reference_types: List[ReferenceType] = []    # references that must be resolved after parsing
+
 
 def parse(text: str) -> File:
+    global global_types
+    global_types = {}
     if text[-1] != "\n":
         text += "\n"
     grammar_file = Path(__file__).parent.joinpath("grammar.lark")
@@ -15,6 +20,7 @@ def parse(text: str) -> File:
     parse_tree = parser.parse(text)
     transformer = TransformToIR()
     res = transformer.transform(parse_tree)
+    resolve_types()
     return res
 
 
@@ -171,12 +177,19 @@ class TransformToIR(Transformer):
 
     @staticmethod
     def global_type(children: Children):
-        return ReferenceType(children[0].value)
+        check_type(children[0], "IDENTIFIER")
+        name = children[0].value
+        # reference is resolved after everything is parsed
+        # this way the order of declaration is irrelevant
+        reference_type = ReferenceType(name)
+        reference_types.append(reference_type)
+        return reference_type
 
     @staticmethod
     def typedef_primitive(children: Children):
         check_type(children[1], "IDENTIFIER")
         check_type(children[2], PrimitiveType)
+        global_types[children[1].value] = children[2]
         return Typedef(children[1].value, children[2])
 
     @staticmethod
@@ -188,11 +201,13 @@ class TransformToIR(Transformer):
     @staticmethod
     def typedef_enum(children: Children):
         check_type(children[1], EnumType)
+        global_types[children[1].name] = children[1]
         return Typedef(children[1].name, children[1])
 
     @staticmethod
     def typedef_object(children: Children):
         check_type(children[1], ObjectType)
+        global_types[children[1].name] = children[1]
         return Typedef(children[1].name, children[1])
 
     @staticmethod
@@ -237,3 +252,10 @@ def check_type(child: Child, type_: Union[Union[str, type], List[Union[str, type
 def check_children(children: Children, type_: Union[Union[str, type], List[Union[str, type]]]):
     """Helper method for assertions"""
     _ = [check_type(c, type_) for c in children]
+
+
+def resolve_types():
+    for ref in reference_types:
+        if ref.name not in global_types:
+            raise RuntimeError(ref.name)    # TODO
+        ref.reference = global_types[ref.name]

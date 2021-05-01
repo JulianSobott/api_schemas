@@ -73,3 +73,12 @@ t
 """
 
 everything = typedef_everything + websockets_1 + communication_1
+
+
+references_schema = """\
+typedef X
+    y: $Y
+    
+typedef Y
+    x: $X
+"""
