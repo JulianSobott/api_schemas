@@ -1,5 +1,5 @@
 from api_schemas import *
-from .example_schemas import *
+from example_schemas import *
 
 import unittest
 

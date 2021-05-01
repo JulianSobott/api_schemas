@@ -15,7 +15,7 @@ class TestSyntax(unittest.TestCase):
 
     def wrong(self, content: str):
         with self.subTest(self.i):
-            self.assertRaises(Exception, parse, content)
+            self.assertRaises(SystemExit, parse, content)
         self.i += 1
 
     def test_typedef(self):

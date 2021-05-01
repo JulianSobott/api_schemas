@@ -8,9 +8,15 @@ from lark import UnexpectedToken
 def on_syntax_error(x: UnexpectedToken, ctx: 'Context'):
     ctx.position = Position(x.line, x.column, x.line, x.column)
     token = x.token.type
+    help_msg = ""
     if x.token.type == "_NL":
         token = "\\n"
-    _print_error(ErrorLevel.ERROR, ctx, f"SyntaxError: unexpected Token {token}. expected: {x.expected}")
+    elif x.token.type == "_END":
+        token = "'End of indentation'"
+        help_msg = "Maybe you are missing a body"
+    elif x.token.type == "_BEGIN":
+        token = "'Begin of indentation'"
+    _print_error(ErrorLevel.ERROR, ctx, f"SyntaxError: unexpected Token {token}. expected: {x.expected}", help_msg)
     exit(-1)
 
 
@@ -50,7 +56,7 @@ class Context:
     position: 'Position'
 
     def get_line(self, i: int):
-        return self.file_content.split("\n")[i - 1]     # line 1 is first line
+        return self.file_content.split("\n")[i - 1].replace("\t", " ")     # line 1 is first line   # TODO: handle \t
 
     def with_pos(self, pos: 'Position') -> 'Context':
         self.position = pos

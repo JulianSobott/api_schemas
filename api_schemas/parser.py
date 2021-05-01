@@ -14,8 +14,10 @@ reference_types: List['TempReferenceType'] = []    # references that must be res
 
 
 def parse(text: str) -> File:
-    global global_types
+    global global_types, reference_types
     global_types = {}
+    reference_types = []
+
     if text[-1] != "\n":
         text += "\n"
     grammar_file = Path(__file__).parent.joinpath("grammar.lark")
