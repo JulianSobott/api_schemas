@@ -49,6 +49,10 @@ class Context:
     def get_line(self, i: int):
         return self.file_content.split("\n")[i - 1]     # line 1 is first line
 
+    def with_pos(self, pos: 'Position') -> 'Context':
+        self.position = pos
+        return self
+
 
 @dataclass
 class Position:

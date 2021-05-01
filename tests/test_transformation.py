@@ -42,4 +42,4 @@ class TestTransformation(unittest.TestCase):
         self.assertEqual(res.global_types[1].type.attributes[0].type.reference.name, "X")
 
     def test_reference_types_not_found(self):
-        self.assertRaises(RuntimeError, lambda:parse("typedef Y\n\tx: $X\n"))
+        self.assertRaises(SystemExit, lambda:parse("typedef Y\n\tx: $X\n"))

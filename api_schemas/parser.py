@@ -1,14 +1,15 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Union, List, Tuple, Any, Dict
 
 from lark import Lark, Tree, Token, Visitor, Transformer
 from lark.indenter import Indenter
 
-from .error_handling import on_syntax_error, Context
+from .error_handling import on_syntax_error, Context, Position, error, ErrorLevel
 from .intermediate_representation import *
 
 global_types: Dict[str, Type] = {}   # store all objects for resolving
-reference_types: List[ReferenceType] = []    # references that must be resolved after parsing
+reference_types: List['TempReferenceType'] = []    # references that must be resolved after parsing
 
 
 def parse(text: str) -> File:
@@ -22,7 +23,7 @@ def parse(text: str) -> File:
     parse_tree = parser.parse(text, on_error=lambda err: on_syntax_error(err, ctx))
     transformer = TransformToIR()
     res = transformer.transform(parse_tree)
-    resolve_types()
+    resolve_types(ctx)
     return res
 
 
@@ -183,8 +184,11 @@ class TransformToIR(Transformer):
         name = children[0].value
         # reference is resolved after everything is parsed
         # this way the order of declaration is irrelevant
-        reference_type = ReferenceType(name)
-        reference_types.append(reference_type)
+        t = children[0]
+
+        reference_type = ReferenceType(name, None)
+        reference_types.append(
+            TempReferenceType(reference_type, Position(t.line, t.column, t.line, t.column + len(t.value))))
         return reference_type
 
     @staticmethod
@@ -256,8 +260,14 @@ def check_children(children: Children, type_: Union[Union[str, type], List[Union
     _ = [check_type(c, type_) for c in children]
 
 
-def resolve_types():
+def resolve_types(ctx: Context):
     for ref in reference_types:
-        if ref.name not in global_types:
-            raise RuntimeError(ref.name)    # TODO
-        ref.reference = global_types[ref.name]
+        if ref.ref.name not in global_types:
+            error(ErrorLevel.ERROR, ctx.with_pos(ref.pos), f"NameError: name '{ref.ref.name} is not defined")
+        ref.ref.reference = global_types[ref.ref.name]
+
+
+@dataclass
+class TempReferenceType:
+    ref: ReferenceType
+    pos: Position
