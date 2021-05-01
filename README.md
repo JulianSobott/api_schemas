@@ -70,3 +70,12 @@ WS
 - Add compilers to build dataclasses for python and dart
 - Add Websocket support
 - Allow Communications that are an array instead of an object
+
+### 0.1.4
+
+Date: 01.05.2020
+
+- Attribute body can be ReferenceType (#c9d8a896cd3653b36315cb31058e616d1296f988)
+- ReferenceType resolution after transform (#4f59f43861a0bccf65f20689d87b85962e0ad81e)
+- Basic error messages
+- Compiler: Add get_native_type method (#6ea36a7353847b064633908cb42cf6e449050e5a)
