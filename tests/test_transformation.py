@@ -44,3 +44,7 @@ class TestTransformation(unittest.TestCase):
     def test_reference_types_not_found(self):
         self.assertRaises(SystemExit, lambda: parse("typedef Y\n\tx: $X\n"))
         self.assertRaises(SystemExit, lambda: parse("typedef Hello\n\tx: int\ntypedef X\n\tx: $hello\n"))
+
+    def test_communication_url(self):
+        res = parse(communication_1)
+        self.assertEqual(res.communications[0].uri, "/a")

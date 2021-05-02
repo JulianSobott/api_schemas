@@ -61,15 +61,24 @@ WS
 """
 
 communication_1 = """
-t
-    uri=/t
+typedef Error
+    error_number: int
+    developer_message: str
     
+/a
     GET
         ->
             []: bool
         <-
             200
-
+    /<name>? {age:int = 10} & q:int & p
+        GET
+            ->
+            <-
+                200
+                    i: int
+                400
+                    $Error
 """
 
 everything = typedef_everything + websockets_1 + communication_1
