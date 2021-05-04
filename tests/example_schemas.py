@@ -56,7 +56,7 @@ typedef X
 WS
     ->
         join
-            $X
+            x: $X
     <-
 """
 

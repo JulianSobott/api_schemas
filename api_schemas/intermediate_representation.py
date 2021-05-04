@@ -104,7 +104,7 @@ class WSEvents:
 @dataclass
 class WSEvent:
     name: str
-    data: Union[List[TypeAttribute], ReferenceType]
+    data: List[TypeAttribute]
 
 
 def url_params_from_uri(uri: str) -> List[str]:
