@@ -1,4 +1,10 @@
 typedef_everything = """\
+typedef Week {Monday, Tuesday, Wednesday}
+
+typedef Date str
+    type = Datetime
+    format = yyyy-mm-dd HH:MM:ss.SSS
+    
 typedef Example
     a: str
     b: int
@@ -12,12 +18,7 @@ typedef Example
             type = Date
             format = yyyy-mm-dd HH:MM:ss.SSS
         j: $Week
-
-typedef Date str
-    type = Datetime
-    format = yyyy-mm-dd HH:MM:ss.SSS
     
-typedef Week {Monday, Tuesday, Wednesday}
 
 typedef Q
     a: $Example
@@ -74,11 +75,3 @@ t
 
 everything = typedef_everything + websockets_1 + communication_1
 
-
-references_schema = """\
-typedef X
-    y: $Y
-    
-typedef Y
-    x: $X
-"""

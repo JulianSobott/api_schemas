@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import List, Union
 from enum import Enum
 
-__all__ = ["ObjectType", "EnumType", "ReferenceType", "File", "TypeAttribute", "Communication", "Constant", "Request",
+__all__ = ["ObjectType", "EnumType", "File", "TypeAttribute", "Communication", "Constant", "Request",
            "Response", "Type", "Typedef", "PrimitiveType", "Primitive", "WSEvent", "WSEvents"]
 
 
@@ -37,13 +37,7 @@ class EnumType:
     values: List[str]
 
 
-@dataclass
-class ReferenceType:
-    name: str
-    reference: 'Type' = None
-
-
-Type = Union[PrimitiveType, ObjectType, EnumType, ReferenceType]
+Type = Union[PrimitiveType, ObjectType, EnumType]
 
 
 @dataclass
