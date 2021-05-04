@@ -2,7 +2,7 @@ from typing import Dict
 
 from mako.template import Template
 
-from api_schemas import Primitive
+from api_schemas import *
 from api_schemas.compilers.base import *
 
 file_template = Template("""\
@@ -29,20 +29,20 @@ enum ${enum.name} {
 % for cls in classes:
 class ${cls.name} {
     % for attr in cls.req_attributes:
-  ${attr.type} ${attr.name};
+  ${attr.type} ${attr.native_name};
     % endfor
     % for attr in cls.opt_attributes:
-  ${attr.type} ${attr.name};
+  ${attr.type} ${attr.native_name};
     % endfor
 
   ${cls.name}(
     % for attr in cls.req_attributes:
-    this.${attr.name},
+    this.${attr.native_name},
     % endfor
     % if cls.opt_attributes:
     {
         % for attr in cls.opt_attributes:
-    this.${attr.name},
+    this.${attr.native_name},
         % endfor
     }
     % endif
@@ -50,11 +50,11 @@ class ${cls.name} {
 
   ${cls.name}.fromJson(Map<String, dynamic> json) {
     % for attr in cls.req_attributes:
-    ${attr.name} = json["${attr.name}"];
+    ${attr.native_name} = ${attr.from_json};
     % endfor
      % for attr in cls.opt_attributes:
-    if (json.containsKey("${attr.name}")) {
-      ${attr.name} = json["${attr.name}"];
+    if (json.containsKey("${attr.original_name}")) {
+      ${attr.native_name} = ${attr.from_json};
     }
     % endfor
   }
@@ -62,23 +62,50 @@ class ${cls.name} {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> json = new Map<String, dynamic>();
     % for attr in cls.req_attributes:
-    json["${attr.name}"] = ${attr.name};
+    json["${attr.original_name}"] = ${attr.to_json};
     % endfor
     % for attr in cls.opt_attributes:
-    if (${attr.name} != null) {
-      json["${attr.name}"] = ${attr.name};
+    if (${attr.native_name} != null) {
+      json["${attr.original_name}"] = ${attr.to_json};
     }
     % endfor
     return json;
   }
 }
-
-
 %endfor 
 """)
 
 
 class DartCompiler(BaseCompiler):
+
+    def format_from_json(self, t: Type, original_name: str, is_array: bool):
+        if is_array:
+            native_type = self.get_native_type(t, is_array)
+            s = f"{native_type} tmp__ = [];\n" \
+                f"for "
+        if type(t) == ObjectType:
+            native_type = self.get_native_type(t)
+            return f"{native_type}.fromJson(json[\"{original_name}\"])"
+        elif type(t) == PrimitiveType:
+            return f"json[\"{original_name}\"]"
+        elif type(t) == ReferenceType:
+            native_type = self.get_native_type(t)
+            return f"{native_type}.fromJson(json)"
+        elif type(t) == EnumType:
+            native_type = self.get_native_type(t)
+            return f"{native_type}.values.firstWhere(" \
+                   f"(e) => e.toString() == \"{native_type}.\" + json[\"{original_name}\"])"
+
+    def format_to_json(self, t: Type, native_name: str, is_array: bool):
+        if type(t) == ObjectType:
+            return f"{native_name}.toJson()"
+        elif type(t) == PrimitiveType:
+            return native_name
+        elif type(t) == ReferenceType:
+            return f"{native_name}.toJson()"
+        elif type(t) == EnumType:
+            native_type = self.get_native_type(t)
+            return f"{native_name}.toString().replaceFirst(\"{native_type}.\", \"\")"
 
     def _get_array_format(self) -> str:
         return "List<{}>"

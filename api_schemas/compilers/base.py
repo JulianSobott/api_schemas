@@ -10,6 +10,7 @@ from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, R
 
 __all__ = ["NameTypes", "CaseConverter", "BaseCompiler", "NameFormat"]
 
+
 class NameTypes(Enum):
     ATTRIBUTE = 0
     CLASS = 1
@@ -44,7 +45,8 @@ class CaseConverter:
             if target == CaseConverter.PASCAL:
                 return ''.join(word.title() for word in name.split('_'))
             elif target == CaseConverter.CAMEL:
-                return name[0].lower() + ''.join(word.title() for word in name[1:].split('_'))
+                comp = name.split("_")
+                return comp[0].lower() + ''.join(word.title() for word in comp[1:])
             elif target == CaseConverter.UPPER:
                 return name.upper()
         elif source == CaseConverter.CAMEL:
@@ -105,6 +107,12 @@ class BaseCompiler(ABC):
     def _get_array_format(self) -> str:
         raise NotImplementedError()
 
+    def format_from_json(self, t: Type, original_name: str, is_array: bool):
+        raise NotImplementedError()
+
+    def format_to_json(self, t: Type, native_name: str, is_array: bool):
+        raise NotImplementedError()
+
     def get_native_type(self, t: Type, is_array: bool = False, is_optional: bool = False):
         """Returns the Type for formatted for the specific language.
         This type can be used for attributes, parameters, ...
@@ -142,7 +150,7 @@ class BaseCompiler(ABC):
         # TODO: Should they be global then?
         for event in ir.ws_events.client + ir.ws_events.server:
             queue = event.data
-            while queue:
+            while queue and isinstance(queue, list):    # ReferenceType is handled, when the definition is handled
                 e = queue.pop()
                 if type(e.type) == ObjectType:
                     queue.extend(e.type.attributes)
@@ -157,11 +165,13 @@ class BaseCompiler(ABC):
                 req_attributes: List[Attribute] = []
                 opt_attributes: List[Attribute] = []
                 for a in t.attributes:
-                    name = self.format_name(a.name, NameTypes.ATTRIBUTE)
+                    native_name = self.format_name(a.name, NameTypes.ATTRIBUTE)
                     if type(a.type) in [ObjectType, EnumType]:
                         objects.append(a.type)
                     _type = self.get_native_type(a.type, a.is_array, a.is_optional)
-                    java_attribute = Attribute(name, _type)
+                    from_json = self.format_from_json(a.type, a.name, a.is_array)
+                    to_json = self.format_to_json(a.type, native_name, a.is_array)
+                    java_attribute = Attribute(a.name, native_name, _type, from_json, to_json)
                     if a.is_optional:
                         opt_attributes.append(java_attribute)
                     else:
@@ -186,8 +196,11 @@ class Class:
 
 @dataclass
 class Attribute:
-    name: str
+    original_name: str
+    native_name: str
     type: str
+    from_json: str
+    to_json: str
 
 
 @dataclass
