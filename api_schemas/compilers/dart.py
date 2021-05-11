@@ -88,9 +88,6 @@ class DartCompiler(BaseCompiler):
             return f"{native_type}.fromJson(json[\"{original_name}\"])"
         elif type(t) == PrimitiveType:
             return f"json[\"{original_name}\"]"
-        elif type(t) == ReferenceType:
-            native_type = self.get_native_type(t)
-            return f"{native_type}.fromJson(json)"
         elif type(t) == EnumType:
             native_type = self.get_native_type(t)
             return f"{native_type}.values.firstWhere(" \
@@ -101,8 +98,6 @@ class DartCompiler(BaseCompiler):
             return f"{native_name}.toJson()"
         elif type(t) == PrimitiveType:
             return native_name
-        elif type(t) == ReferenceType:
-            return f"{native_name}.toJson()"
         elif type(t) == EnumType:
             native_type = self.get_native_type(t)
             return f"{native_name}.toString().replaceFirst(\"{native_type}.\", \"\")"

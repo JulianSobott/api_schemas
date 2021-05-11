@@ -6,7 +6,7 @@ from typing import Dict, List, Union
 
 from mako.template import Template
 
-from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, ReferenceType, Type
+from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, Type
 
 __all__ = ["NameTypes", "CaseConverter", "BaseCompiler", "NameFormat"]
 
@@ -107,10 +107,10 @@ class BaseCompiler(ABC):
     def _get_array_format(self) -> str:
         raise NotImplementedError()
 
-    def format_from_json(self, t: Type, original_name: str, is_array: bool):
+    def format_from_json(self, t: Type, native_name: str, original_name: str, is_array: bool):
         raise NotImplementedError()
 
-    def format_to_json(self, t: Type, native_name: str, is_array: bool):
+    def format_to_json(self, t: Type, native_name: str, original_name: str, is_array: bool):
         raise NotImplementedError()
 
     def get_native_type(self, t: Type, is_array: bool = False, is_optional: bool = False):
@@ -128,8 +128,6 @@ class BaseCompiler(ABC):
             _type = self._get_primitive_map()[t.primitive]
         elif type(t) == EnumType:
             _type = self.format_name(t.name, NameTypes.ENUM_NAME)
-        elif type(t) == ReferenceType:
-            _type = self.get_native_type(t.reference)
         else:
             raise Exception(f"Unknown type {type(t)}")
         if is_array:
@@ -150,7 +148,7 @@ class BaseCompiler(ABC):
         # TODO: Should they be global then?
         for event in ir.ws_events.client + ir.ws_events.server:
             queue = event.data
-            while queue and isinstance(queue, list):    # ReferenceType is handled, when the definition is handled
+            while queue and isinstance(queue, list):
                 e = queue.pop()
                 if type(e.type) == ObjectType:
                     queue.extend(e.type.attributes)
@@ -166,11 +164,12 @@ class BaseCompiler(ABC):
                 opt_attributes: List[Attribute] = []
                 for a in t.attributes:
                     native_name = self.format_name(a.name, NameTypes.ATTRIBUTE)
+                    original_name = a.name
                     if type(a.type) in [ObjectType, EnumType]:
                         objects.append(a.type)
                     _type = self.get_native_type(a.type, a.is_array, a.is_optional)
-                    from_json = self.format_from_json(a.type, a.name, a.is_array)
-                    to_json = self.format_to_json(a.type, native_name, a.is_array)
+                    from_json = self.format_from_json(a.type, native_name, original_name, a.is_array)
+                    to_json = self.format_to_json(a.type, native_name, original_name, a.is_array)
                     java_attribute = Attribute(a.name, native_name, _type, from_json, to_json)
                     if a.is_optional:
                         opt_attributes.append(java_attribute)

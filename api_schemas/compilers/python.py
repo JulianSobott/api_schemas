@@ -37,16 +37,50 @@ class ${enum.name}(enum.Enum):
 @dataclass
 class ${cls.name}:
     % for attr in cls.req_attributes:
-  ${attr.name}: '${attr.type}'
+  ${attr.native_name}: '${attr.type}'
     % endfor
    % for attr in cls.opt_attributes:
-  ${attr.name}: 'Optional[${attr.type}]' = None
+  ${attr.native_name}: 'Optional[${attr.type}]' = None
     % endfor
 %endfor
 """)
 
 
 class PythonCompiler(BaseCompiler):
+
+    def format_from_json(self, t: Type, native_name: str, original_name: str, is_array: bool, json_value: str = None):
+        if not json_value:
+            json_value = "json[\"{original_name}\"]"
+        if is_array:
+            return f"self.{native_name} = []\n" \
+                   f"for v in {json_value}:\n" \
+                   f"  self.{native_name}.append({self.format_from_json_single(t, 'v')}))\n"
+        else:
+            return f"self.{native_name} = {self.format_from_json_single(t, json_value)}"
+
+    def format_from_json_single(self, t: Type, json_value: str):
+        if type(t) == PrimitiveType:
+            return json_value
+        elif type(t) == ObjectType:
+            return f"{t.name}.from_json({json_value})"
+        elif type(t) == EnumType:
+            return f"{t.name}[\"{json_value}\"]"
+
+    def format_to_json(self, t: Type, native_name: str, original_name: str, is_array: bool):
+        if is_array:
+            return f"json[{original_name}] = []\n" \
+                   f"for v in self.{native_name}:\n" \
+                   f"   json[{original_name}].append({self.format_to_json_single(t, 'v')})"
+        else:
+            return f"json[{original_name}] = {self.format_to_json_single(t, native_name)}"
+
+    def format_to_json_single(self, t: Type, native_name: str):
+        if type(t) == PrimitiveType:
+            return f"self.{native_name}"
+        elif type(t) == ObjectType:
+            return f"self.{native_name}.to_json()"
+        elif type(t) == EnumType:
+            return f"self.{native_name}.name"
 
     def _get_array_format(self) -> str:
         return "List[{}]"

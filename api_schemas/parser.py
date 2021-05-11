@@ -198,6 +198,7 @@ class TransformToIR(Transformer):
         check_type(children[1], "IDENTIFIER")
         check_type(children[2], AllTypes)
         name = children[1].value
+        # TODO: new child with new name?
         sym_table[name] = children[2]
         return Typedef(name, sym_table[name])
 
