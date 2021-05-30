@@ -1,3 +1,4 @@
+import enum
 from typing import Dict
 
 import autopep8 as autopep8
@@ -19,8 +20,8 @@ file_template = Template("""\
 %>
 ${imports_str}
 from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Union
+import json
 import enum
 
 # Enums
@@ -33,15 +34,41 @@ class ${enum.name}(enum.Enum):
 
 # Data Classes
 % for cls in classes:
-@dataclass_json
 @dataclass
 class ${cls.name}:
     % for attr in cls.req_attributes:
-  ${attr.native_name}: '${attr.type}'
+    ${attr.native_name}: '${attr.type}'
     % endfor
    % for attr in cls.opt_attributes:
-  ${attr.native_name}: 'Optional[${attr.type}]' = None
+    ${attr.native_name}: 'Optional[${attr.type}]' = None
     % endfor
+    
+    @classmethod
+    def from_json(cls, data: 'Union[str, dict]'):
+        if type(data) is str:
+            data = json.loads(data)
+        % for attr in cls.req_attributes:
+        ${attr.from_json}
+        % endfor
+        % for attr in cls.opt_attributes:
+        if "${attr.original_name}" in data:
+            ${attr.from_json}
+        else:
+            ${attr.native_name} = None
+        % endfor
+        <% attributes = ", ".join([attr.native_name for attr in cls.req_attributes + cls.opt_attributes]) %>
+        return cls(${attributes})
+        
+    def to_json(self):
+        data = {}
+        % for attr in cls.req_attributes:
+        ${attr.to_json}
+        % endfor
+        % for attr in cls.opt_attributes:
+        if self.${attr.original_name}:
+            ${attr.to_json}
+        % endfor
+        return data
 %endfor
 """)
 
@@ -50,29 +77,27 @@ class PythonCompiler(BaseCompiler):
 
     def format_from_json(self, t: Type, native_name: str, original_name: str, is_array: bool, json_value: str = None):
         if not json_value:
-            json_value = "json[\"{original_name}\"]"
+            json_value = f"data[\"{original_name}\"]"
         if is_array:
-            return f"self.{native_name} = []\n" \
-                   f"for v in {json_value}:\n" \
-                   f"  self.{native_name}.append({self.format_from_json_single(t, 'v')}))\n"
+            return f"{native_name} = [{self.format_from_json_single(t, 'v')} for v in {json_value}]"
         else:
-            return f"self.{native_name} = {self.format_from_json_single(t, json_value)}"
+            return f"{native_name} = {self.format_from_json_single(t, json_value)}"
 
     def format_from_json_single(self, t: Type, json_value: str):
         if type(t) == PrimitiveType:
             return json_value
         elif type(t) == ObjectType:
-            return f"{t.name}.from_json({json_value})"
+            type_name = self.format_name(t.name, NameTypes.CLASS)
+            return f"{type_name}.from_json({json_value})"
         elif type(t) == EnumType:
-            return f"{t.name}[\"{json_value}\"]"
+            type_name = self.format_name(t.name, NameTypes.ENUM_NAME)
+            return f"{type_name}[{json_value}]"
 
     def format_to_json(self, t: Type, native_name: str, original_name: str, is_array: bool):
         if is_array:
-            return f"json[{original_name}] = []\n" \
-                   f"for v in self.{native_name}:\n" \
-                   f"   json[{original_name}].append({self.format_to_json_single(t, 'v')})"
+            return f"data[\"{original_name}\"] = [{self.format_to_json_single(t, 'v')} for v in self.{native_name}]"
         else:
-            return f"json[{original_name}] = {self.format_to_json_single(t, native_name)}"
+            return f"data[\"{original_name}\"] = {self.format_to_json_single(t, native_name)}"
 
     def format_to_json_single(self, t: Type, native_name: str):
         if type(t) == PrimitiveType:

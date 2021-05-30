@@ -6,7 +6,7 @@ from typing import Dict, List, Union
 
 from mako.template import Template
 
-from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, Type
+from api_schemas import Primitive, PrimitiveType, parse, ObjectType, EnumType, Type, TypeAttribute
 
 __all__ = ["NameTypes", "CaseConverter", "BaseCompiler", "NameFormat"]
 
@@ -140,15 +140,33 @@ class BaseCompiler(ABC):
         classes = []
         enums = []
         objects: List[Union[ObjectType, EnumType]] = []
-        for obj in ir.global_types:
-            if type(obj.type) in [ObjectType, EnumType]:
-                objects.append(obj.type)
+
+        def object_from_attributes(attributes: List[TypeAttribute]):
+            queue: List[TypeAttribute] = attributes
+            while queue:
+                e = queue.pop()
+                if type(e.type) == ObjectType:
+                    queue.extend(e.type.attributes)
+                    objects.append(e.type)
+                if type(e.type) == EnumType:
+                    objects.append(e.type)
+            return queue
+
+        queue: List[Union[ObjectType, EnumType]] = [obj.type for obj in ir.global_types]
+        while queue:
+            obj = queue.pop()
+            if type(obj) is ObjectType:
+                objects.append(obj)
+                for a in obj.attributes:
+                    if type(a) in [ObjectType, EnumType]:
+                        queue.append(a.type)     
 
         # get all not globally defined classes
         # TODO: Should they be global then?
         for event in ir.ws_events.client + ir.ws_events.server:
+            objects.append(ObjectType(f"event_data_{event.name}", [], event.data))
             queue = event.data
-            while queue and isinstance(queue, list):
+            while queue:
                 e = queue.pop()
                 if type(e.type) == ObjectType:
                     queue.extend(e.type.attributes)
@@ -165,8 +183,6 @@ class BaseCompiler(ABC):
                 for a in t.attributes:
                     native_name = self.format_name(a.name, NameTypes.ATTRIBUTE)
                     original_name = a.name
-                    if type(a.type) in [ObjectType, EnumType]:
-                        objects.append(a.type)
                     _type = self.get_native_type(a.type, a.is_array, a.is_optional)
                     from_json = self.format_from_json(a.type, native_name, original_name, a.is_array)
                     to_json = self.format_to_json(a.type, native_name, original_name, a.is_array)
